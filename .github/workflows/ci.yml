@@ -1,0 +1,24 @@
+name: CI
+on: [push]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Vagrant
+      run: |
+        wget -O- https://apt.releases.hashicorp.com/gpg | sudo gpg --dearmor -o /usr/share/keyrings/hashicorp-archive-keyring.gpg
+        echo "deb [signed-by=/usr/share/keyrings/hashicorp-archive-keyring.gpg] https://apt.releases.hashicorp.com $(lsb_release -cs) contrib" | sudo tee /etc/apt/sources.list.d/hashicorp.list
+        sudo apt update && sudo apt install vagrant libvirt-daemon-system
+        sudo mkdir /etc/systemd/system/libvirtd.socket.d
+        sudo tee /etc/systemd/system/libvirtd.socket.d/override.conf <<- EOF
+        [Socket]
+        SocketGroup=adm
+        EOF
+        sudo systemctl daemon-reload
+        sudo systemctl stop libvirtd
+        sudo systemctl restart libvirtd.socket
+        vagrant up --provider libvirt
+    - name: Setup tmate session
+      uses: mxschmitt/action-tmate@v3
+      if: success() || failure()
